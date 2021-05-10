@@ -1,0 +1,163 @@
+#! /usr/bin/env stap
+
+probe begin {
+    println("hello tcp-mtu-probing.stp");
+}
+
+probe end {
+    println("ended tcp-mtu-probing.stp");
+}
+
+function cast_sock(sk) {
+    return &@cast(sk, "sock", "kernel<net/sock.h>");
+}
+
+function sock_net(sk) {
+    return cast_sock(sk)->__sk_common->skc_net->net;
+}
+
+function sk_common(sk) {
+    return &cast_sock(sk)->__sk_common;
+}
+
+function sk_family(sk) {
+    return sk_common(sk)->skc_family;
+}
+
+function sk_type(sk) {
+    return cast_sock(sk)->sk_type;
+}
+
+function inet_sk(sk) {
+    return &@cast(sk, "inet_sock", "kernel<net/inet_sock.h>");
+}
+
+function inet_sport(sk) {
+    return ntohs(inet_sk(sk)->inet_sport);
+}
+
+function inet_dport(sk) {
+    return ntohs(sk_common(sk)->skc_dport);
+}
+
+function inet_csk(sk) {
+    return &@cast(sk, "inet_connection_sock", "kernel<net/inet_connection_sock.h>");
+}
+
+function tcp_sk(sk) {
+    return &@cast(sk, "tcp_sock", "kernel<linux/tcp.h>");
+}
+
+/* fake */
+function tcp_mtu_to_mss(sk, mtu) {
+    /* Substract iphdr tcphdr TCPOLEN_TSTAMP_ALIGNED */
+    return mtu - 16 - 16 - 12;
+}
+
+function interesting_sk(sk) {
+    if (!sk)
+        return 0;
+    /* AF_INET SOCK_STREAM */
+    if (sk_family(sk) != 2 || sk_type(sk) != 1)
+        return 0;
+    sport = inet_sport(sk);
+    dport = inet_dport(sk);
+    return(sport == 5005 || dport == 5005 || sport == 179 || dport == 179);
+}
+
+function dump_tcp_mtu_probe_info(sk)
+{
+    sk = cast_sock(sk);
+    sk_family = sk_family(sk);
+    isk = inet_sk(sk);
+    icsk = inet_csk(sk);
+    tp = tcp_sk(sk);
+    net = sock_net(sk);
+
+    printf("\tsaddr=%s\n", format_ipaddr(isk->inet_saddr, sk_family));
+    printf("\tsport=%d\n", inet_sport(sk));
+    printf("\tdaddr=%s\n", format_ipaddr(sk->__sk_common->skc_daddr, sk_family));
+    printf("\tdport=%d\n", inet_dport(sk));
+
+    printf("\ticsk_mtup search_high=%d search_low=%d\n",
+            icsk->icsk_mtup->search_high,
+            icsk->icsk_mtup->search_low);
+    printf("\ticsk_pmtu_cookie=%d\n", icsk->icsk_pmtu_cookie);
+    printf("\ticsk_mtup.enabled=%d\n", icsk->icsk_mtup->enabled);
+    printf("\ticsk_mtup.probe_size=%d\n", icsk->icsk_mtup->probe_size);
+    printf("\ticsk_mtup.probe_timestamp=%d jiffies=%d delta=%d\n",
+            icsk->icsk_mtup->probe_timestamp, jiffies(),
+            icsk->icsk_mtup->probe_timestamp - (jiffies() & 0xFFFFFFFF));
+    printf("\tmtu_probe.probe_seq_end=%d\n", tp->mtu_probe->probe_seq_end);
+    printf("\tsnd_una=%d\n", tp->snd_una);
+    printf("\tnet.ipv4.sysctl_tcp_probe_threshold=%d\n", net->ipv4->sysctl_tcp_probe_threshold);
+    printf("\tnet.ipv4.sysctl_tcp_probe_interval=%d\n", net->ipv4->sysctl_tcp_probe_interval);
+    printf("\trx_opt.num_sacks=%d\n", tp->rx_opt->num_sacks);
+    printf("\trx_opt.dasck=%d\n", tp->rx_opt->dsack);
+    printf("\trx_opt.mss_clamp=%d\n", tp->rx_opt->mss_clamp);
+    printf("\tmss_cache=%d\n", tp->mss_cache);
+}
+
+probe kernel.function("tcp_sync_mss") {
+    sk = $sk;
+    if (interesting_sk(sk)) {
+        tp = tcp_sk(sk);
+        printf("%s: sk=%p tp->mss_cache=%d parms %s\n", pp(), sk, tp->mss_cache, $$parms);
+        //dump_tcp_mtu_probe_info(sk);
+    }
+}
+
+probe kernel.function("tcp_sync_mss").return {
+    sk = @entry($sk);
+    if (interesting_sk(sk)) {
+        tp = tcp_sk(sk);
+        printf("%s: sk=%p mss_cache=%d\n", pp(), sk, tp->mss_cache);
+        //dump_tcp_mtu_probe_info(sk);
+    }
+}
+
+/* Probing does not work inside tcp_mtu_probe ($sk missing) but tcp_write_xmit is close enough */
+probe kernel.function("tcp_write_xmit@net/ipv4/tcp_output.c") {
+    sk = $sk;
+    if (!interesting_sk($sk)) {
+        next;
+    }
+    printf("%s: %s\t%s:%d to %s:%d\n", pp(), $$parms,
+            format_ipaddr(inet_sk(sk)->inet_saddr, 2), inet_sport(sk),
+            format_ipaddr(sk->__sk_common->skc_daddr, 2), inet_dport(sk));
+    icsk = inet_csk($sk);
+    tp = tcp_sk(sk);
+    if ($push_one) {
+        printf("\tmtu probe skip because push_one=%d\n", $push_one);
+        next;
+    }
+    if (!icsk->icsk_mtup->enabled) {
+        printf("\tmtu probe skip because !icsk_mtup.enabled\n");
+        next;
+    }
+    if (icsk->icsk_mtup->probe_size) {
+        printf("\tmtu probe already in progress probe_size=%d\n", icsk->icsk_mtup->probe_size);
+        next;
+    }
+
+    // This does not handle the mtu/mss delta correctly:
+    probe_size = tcp_mtu_to_mss(sk, (icsk->icsk_mtup->search_high + icsk->icsk_mtup->search_low) >> 1);
+    size_needed = probe_size + (tp->reordering + 1) * tp->mss_cache;
+
+    size_queued = tp->write_seq - tp->snd_nxt;
+    if (tp->write_seq - tp->snd_nxt < size_needed) {
+        printf("\tmtu probe skip because size_needed=%d < size_queued=%d\n",
+                size_needed, tp->write_seq - tp->snd_nxt);
+        next;
+    }
+
+    if (tp->snd_wnd < size_needed) {
+        printf("\tmtu probe skip because size_needed=%d > tp->snd_wnd=%d\n",
+                size_needed, tp->snd_wnd);
+        next;
+    }
+
+    printf("\tmtu probe seems valid probe_size=%d size_needed=%d size_queue=%d\n",
+            probe_size, size_needed, size_queued);
+    dump_tcp_mtu_probe_info(sk);
+}
