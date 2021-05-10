@@ -125,17 +125,17 @@ probe kernel.function("tcp_write_xmit@net/ipv4/tcp_output.c") {
     if (!interesting_sk($sk)) {
         next;
     }
+    icsk = inet_csk($sk);
+    if (!icsk->icsk_mtup->enabled) {
+        //printf("\tmtu probe skip because !icsk_mtup.enabled\n");
+        next;
+    }
     printf("%s: %s\t%s:%d to %s:%d\n", pp(), $$parms,
             format_ipaddr(inet_sk(sk)->inet_saddr, 2), inet_sport(sk),
             format_ipaddr(sk->__sk_common->skc_daddr, 2), inet_dport(sk));
-    icsk = inet_csk($sk);
     tp = tcp_sk(sk);
     if ($push_one) {
         printf("\tmtu probe skip because push_one=%d\n", $push_one);
-        next;
-    }
-    if (!icsk->icsk_mtup->enabled) {
-        printf("\tmtu probe skip because !icsk_mtup.enabled\n");
         next;
     }
     if (icsk->icsk_mtup->probe_size) {
