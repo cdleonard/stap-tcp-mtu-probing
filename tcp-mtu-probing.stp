@@ -147,6 +147,10 @@ probe kernel.function("tcp_write_xmit@net/ipv4/tcp_output.c") {
     probe_size = tcp_mtu_to_mss(sk, (icsk->icsk_mtup->search_high + icsk->icsk_mtup->search_low) >> 1);
     size_needed = probe_size + (tp->reordering + 1) * tp->mss_cache;
 
+    if (tp->reordering != 3) {
+        printf("\tmtu probe affected by reordering=%d\n", tp->reordering);
+    }
+
     size_queued = tp->write_seq - tp->snd_nxt;
     if (tp->write_seq - tp->snd_nxt < size_needed) {
         printf("\tmtu probe skip because size_needed=%d < size_queued=%d\n",
