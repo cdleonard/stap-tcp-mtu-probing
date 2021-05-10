@@ -60,6 +60,9 @@ function interesting_sk(sk) {
     /* AF_INET SOCK_STREAM */
     if (sk_family(sk) != 2 || sk_type(sk) != 1)
         return 0;
+    icsk = inet_csk(sk);
+    if (!icsk->icsk_mtup->enabled)
+        return 0;
     sport = inet_sport(sk);
     dport = inet_dport(sk);
     return(sport == 5005 || dport == 5005 || sport == 179 || dport == 179);
