@@ -65,7 +65,7 @@ function interesting_sk(sk) {
         return 0;
     sport = inet_sport(sk);
     dport = inet_dport(sk);
-    return(sport == 5005 || dport == 5005 || sport == 179 || dport == 179);
+    return(sport == 5001 || dport == 5001 || sport == 179 || dport == 179);
 }
 
 function dump_tcp_mtu_probe_info(sk)
