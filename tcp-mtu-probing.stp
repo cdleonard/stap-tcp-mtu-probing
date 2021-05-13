@@ -81,7 +81,10 @@ function dump_tcp_mtu_probe_info(sk)
     printf("\tsport=%d\n", inet_sport(sk));
     printf("\tdaddr=%s\n", format_ipaddr(sk->__sk_common->skc_daddr, sk_family));
     printf("\tdport=%d\n", inet_dport(sk));
+    printf("\tsk_family=%d\n", sk_family(sk));
+    printf("\tsk_type=%d\n", sk_type(sk));
 
+    printf("\ticsk_mtup enabled=%d\n", icsk->icsk_mtup->enabled);
     printf("\ticsk_mtup search_high=%d search_low=%d\n",
             icsk->icsk_mtup->search_high,
             icsk->icsk_mtup->search_low);
