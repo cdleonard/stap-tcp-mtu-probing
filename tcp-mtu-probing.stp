@@ -203,7 +203,22 @@ probe kernel.function("tcp_send_mss").return {
 probe kernel.function("tcp_mtu_probe").callee("sk_stream_alloc_skb") {
     sk = $sk;
     if (interesting_sk(sk)) {
-        printf("%s: sk=%p call sk_stream_alloc_skb SENDING PROBE\n", ehdr(), sk);
+        printf("%s: PROBE SEND call sk_stream_alloc_skb vars: %s\n", ehdr(), $$vars);
+        print_backtrace();
+    }
+}
+
+probe kernel.function("tcp_mtup_probe_failed") {
+    if (interesting_sk($sk)) {
+        printf("%s: PROBE FAIL vars: %s\n", ehdr(), $$vars);
+        print_backtrace();
+    }
+}
+
+probe kernel.function("tcp_mtup_probe_success") {
+    if (interesting_sk($sk)) {
+        printf("%s: PROBE PASS vars: %s\n", ehdr(), $$vars);
+        print_backtrace();
     }
 }
 
