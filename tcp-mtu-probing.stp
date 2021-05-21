@@ -144,8 +144,6 @@ probe kernel.function("tcp_sendmsg_locked").return {
 function dump_tcp_mtu_probe_info(sk)
 {
     sk = cast_sock(sk);
-    sk_family = sk_family(sk);
-    isk = inet_sk(sk);
     icsk = inet_csk(sk);
     tp = tcp_sk(sk);
     net = sock_net(sk);
