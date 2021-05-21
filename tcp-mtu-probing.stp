@@ -48,12 +48,6 @@ function tcp_sk(sk) {
     return &@cast(sk, "tcp_sock", "kernel<linux/tcp.h>");
 }
 
-/* fake */
-function tcp_mtu_to_mss(sk, mtu) {
-    /* Substract iphdr tcphdr TCPOLEN_TSTAMP_ALIGNED */
-    return mtu - 16 - 16 - 12;
-}
-
 function interesting_sk(sk) {
     if (!sk)
         return 0;
