@@ -222,7 +222,6 @@ probe kernel.function("tcp_mtup_probe_success") {
     }
 }
 
-/*
 probe kernel.function("tcp_mtu_probe@net/ipv4/tcp_output.c") {
     sk = $sk;
     if (interesting_sk(sk)) {
@@ -237,7 +236,6 @@ probe kernel.statement("tcp_mtu_probe@net/ipv4/tcp_output.c:*") {
         printf("%s: locals: %s\n", ehdrl(), $$locals);
     }
 }
- */
 
 probe kernel.function("tcp_write_xmit") {
     if (!interesting_sk($sk)) {
