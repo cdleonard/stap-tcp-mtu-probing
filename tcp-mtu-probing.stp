@@ -1,5 +1,18 @@
 #! /usr/bin/env stap
 
+// config-like macros:
+
+// Only trace sockets for which icsk_mtup.enabled is set to true
+@define ONLY_TRACE_MTUP_ENABLED %(0%)
+
+// Only trace sockets with the following port (either sport or dport):
+@define ONLY_TRACE_TCP_PORT %(5001%)
+//@define ONLY_TRACE_TCP_PORT %(0%)
+
+// Trace conversion between mtu and mss
+@define TRACE_MTU_MSS_CONV %(0%)
+
+
 probe begin {
     println("hello tcp-mtu-probing.stp");
 }
@@ -55,11 +68,17 @@ function interesting_sk(sk) {
     if (sk_family(sk) != 2 || sk_type(sk) != 1)
         return 0;
     icsk = inet_csk(sk);
-    if (!icsk->icsk_mtup->enabled)
-        return 0;
-    sport = inet_sport(sk);
-    dport = inet_dport(sk);
-    return(sport == 5001 || dport == 5001 || sport == 179 || dport == 179);
+    %( @ONLY_TRACE_MTUP_ENABLED == 1 %?
+        if (!icsk->icsk_mtup->enabled)
+            return 0;
+    %:%)
+    %( @ONLY_TRACE_TCP_PORT != 0 %?
+        sport = inet_sport(sk);
+        dport = inet_dport(sk);
+        return(sport == @ONLY_TRACE_TCP_PORT || dport == @ONLY_TRACE_TCP_PORT);
+    %:
+        return 1;
+    %)
 }
 
 function ihdr:string() {
@@ -233,3 +252,38 @@ probe kernel.function("tcp_mark_push")
     }
 }
  */
+
+// (SKIP) trace mtu_to_mss and mss_to_mtu calculations:
+%( @TRACE_MTU_MSS_CONV == 1 %?
+probe kernel.function("tcp_mtu_to_mss")
+{
+    sk = $sk;
+    if (interesting_sk(sk)) {
+        printf("%s: prams: %s\n", ihdr(), $$parms);
+    }
+}
+
+probe kernel.function("tcp_mtu_to_mss").return {
+    sk = @entry($sk);
+    if (interesting_sk(sk)) {
+        printf("%s: return %d mss=%d delta=%d\n", ohdr(),
+                $return, @entry($pmtu), @entry($pmtu) - $return);
+    }
+}
+
+probe kernel.function("tcp_mss_to_mtu")
+{
+    sk = $sk;
+    if (interesting_sk(sk)) {
+        printf("%s: parms: %s\n", ihdr(), $$parms);
+    }
+}
+
+probe kernel.function("tcp_mss_to_mtu").return {
+    sk = @entry($sk);
+    if (interesting_sk(sk)) {
+        printf("%s: return %d mss=%d delta=%d\n", ohdr(),
+                $return, @entry($mss), $return - @entry($mss));
+    }
+}
+%:%)
