@@ -250,22 +250,6 @@ probe kernel.function("tcp_write_xmit") {
             ehdr(), sk, $push_one, size_queued);
 }
 
-/*
-probe kernel.function("tcp_mark_push")
-{
-    sk = $tp;
-    if (interesting_sk(sk)) {
-        printf("%s: sk=%p skb=%p old push_seq=%d write_seq=%d delta=%d"
-                " max_window=%d%s\n",
-                ehdr(), sk, $skb,
-                $tp->pushed_seq, $tp->write_seq,
-                $tp->write_seq - $tp->pushed_seq,
-                $tp->max_window,
-                $tp->write_seq - $tp->pushed_seq > ($tp->max_window / 2) ? " could_force_push" : "");
-    }
-}
- */
-
 // (SKIP) trace mtu_to_mss and mss_to_mtu calculations:
 %( @TRACE_MTU_MSS_CONV == 1 %?
 probe kernel.function("tcp_mtu_to_mss")
