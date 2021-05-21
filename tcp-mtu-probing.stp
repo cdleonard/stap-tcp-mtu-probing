@@ -219,9 +219,7 @@ probe kernel.function("tcp_mtu_probe@net/ipv4/tcp_output.c") {
 probe kernel.statement("tcp_mtu_probe@net/ipv4/tcp_output.c:*") {
     sk = $sk;
     if (interesting_sk(sk)) {
-        printf("%s: size_needed=%s locals: %s\n", ehdrl(),
-                @defined($size_needed) ? sprintf("%d", size_needed) : "?",
-                $$locals);
+        printf("%s: locals: %s\n", ehdrl(), $$locals);
     }
 }
  */
