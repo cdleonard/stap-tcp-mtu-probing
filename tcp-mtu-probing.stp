@@ -67,9 +67,8 @@ function interesting_sk(sk) {
     /* AF_INET SOCK_STREAM */
     if (sk_family(sk) != 2 || sk_type(sk) != 1)
         return 0;
-    icsk = inet_csk(sk);
     %( @ONLY_TRACE_MTUP_ENABLED == 1 %?
-        if (!icsk->icsk_mtup->enabled)
+        if (!inet_csk(sk)->icsk_mtup->enabled)
             return 0;
     %:%)
     %( @ONLY_TRACE_TCP_PORT != 0 %?
