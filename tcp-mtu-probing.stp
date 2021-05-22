@@ -12,6 +12,8 @@
 // Trace conversion between mtu and mss
 @define TRACE_MTU_MSS_CONV %(0%)
 
+// Trace tcp_sync_mss
+@define TRACE_SYNC_MSS %(1%)
 
 probe begin {
     println("hello tcp-mtu-probing.stp");
@@ -174,21 +176,45 @@ function dump_tcp_mtu_probe_info(sk)
     printf("%s: net.ipv4.sysctl_tcp_probe_interval=%d\n", hdr, net->ipv4->sysctl_tcp_probe_interval);
 }
 
+%( @TRACE_SYNC_MSS == 1 %?
 probe kernel.function("tcp_sync_mss") {
     sk = $sk;
     if (interesting_sk(sk)) {
-        tp = tcp_sk(sk);
-        printf("%s: sk=%p old mss_cache=%d\n", ihdr(), sk, tp->mss_cache);
+        printf("%s: parms: %s\n", ihdr(), $$parms);
+        printf("%s: $pmtu=%d"
+                " old mss_cache=%d"
+                " icsk->icsk_pmtu_cookie=%d"
+                " icsk->icsk_mtup.search_high=%d"
+                "\n", ehdr(),
+                $pmtu,
+                tcp_sk(sk)->mss_cache,
+                inet_csk(sk)->icsk_pmtu_cookie,
+                inet_csk(sk)->icsk_mtup->search_high);
+        print_backtrace_fileline();
     }
 }
 
 probe kernel.function("tcp_sync_mss").return {
     sk = @entry($sk);
     if (interesting_sk(sk)) {
-        tp = tcp_sk(sk);
-        printf("%s: sk=%p new mss_cache=%d\n", ohdr(), sk, tp->mss_cache);
+        printf("%s: new mss_cache=%d"
+                " icsk->icsk_pmtu_cookie=%d"
+                " icsk->icsk_mtup.search_high=%d"
+                "\n", ehdr(),
+                tcp_sk(sk)->mss_cache,
+                inet_csk(sk)->icsk_pmtu_cookie,
+                inet_csk(sk)->icsk_mtup->search_high);
+        printf("%s: sk=%p\n", ohdr(), sk);
     }
 }
+
+probe kernel.statement("tcp_sync_mss@net/ipv4/tcp_output.c:*") {
+    sk = $sk;
+    if (interesting_sk(sk)) {
+        printf("%s: locals: %s\n", ehdrl(), $$locals);
+    }
+}
+%:%)
 
 probe kernel.function("tcp_send_mss").return {
     sk = @entry($sk);
