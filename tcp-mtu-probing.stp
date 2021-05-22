@@ -272,7 +272,7 @@ probe kernel.function("tcp_mtu_to_mss")
 {
     sk = $sk;
     if (interesting_sk(sk)) {
-        printf("%s: prams: %s\n", ihdr(), $$parms);
+        printf("%s: parms: %s\n", ihdr(), $$parms);
     }
 }
 
