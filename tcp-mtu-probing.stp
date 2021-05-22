@@ -101,6 +101,7 @@ function ehdrl() {
 probe
         kernel.function("__tcp_push_pending_frames"),
         kernel.function("ip_output"),
+        kernel.function("tcp_sendmsg_locked"),
         kernel.function("tcp_push"),
         kernel.function("tcp_push_one"),
         kernel.function("tcp_rcv_established"),
@@ -116,6 +117,7 @@ probe
 probe
         kernel.function("__tcp_push_pending_frames").return,
         kernel.function("ip_output").return,
+        kernel.function("tcp_sendmsg_locked").return,
         kernel.function("tcp_push").return,
         kernel.function("tcp_push_one").return,
         kernel.function("tcp_rcv_established").return,
@@ -132,14 +134,7 @@ probe kernel.function("tcp_sendmsg_locked") {
     if (interesting_sk($sk)) {
         tp = tcp_sk($sk);
         size_queued = tp->write_seq - tp->snd_nxt;
-        printf("%s: sk=%p size=%d size_queue=%d BEGIN\n", ihdr(), $sk, $size, size_queued);
-    }
-}
-
-probe kernel.function("tcp_sendmsg_locked").return {
-    sk = @entry($sk);
-    if (interesting_sk(sk)) {
-        printf("%s: sk=%p size=%d ENDED\n", ohdr(), sk, @entry($size));
+        printf("%s: sk=%p size=%d size_queue=%d BEGIN\n", ehdr(), $sk, $size, size_queued);
     }
 }
 
