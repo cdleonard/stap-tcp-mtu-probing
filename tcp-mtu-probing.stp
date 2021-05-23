@@ -107,6 +107,8 @@ probe
         kernel.function("tcp_sendmsg_locked"),
         kernel.function("tcp_push"),
         kernel.function("tcp_push_one"),
+        kernel.function("tcp_v4_do_rcv"),
+        kernel.function("tcp_rcv_state_process"),
         kernel.function("tcp_rcv_established"),
         kernel.function("tcp_write_wakeup"),
         kernel.function("tcp_write_xmit")
@@ -123,6 +125,8 @@ probe
         kernel.function("tcp_sendmsg_locked").return,
         kernel.function("tcp_push").return,
         kernel.function("tcp_push_one").return,
+        kernel.function("tcp_v4_do_rcv").return,
+        kernel.function("tcp_rcv_state_process").return,
         kernel.function("tcp_rcv_established").return,
         kernel.function("tcp_write_wakeup").return,
         kernel.function("tcp_write_xmit").return
