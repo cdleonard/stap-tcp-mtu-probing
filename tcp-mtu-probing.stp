@@ -150,32 +150,37 @@ function dump_tcp_mtu_probe_info(sk)
     sk = cast_sock(sk);
     icsk = inet_csk(sk);
     tp = tcp_sk(sk);
-    net = sock_net(sk);
     hdr = ehdr();
 
-    printf("%s: icsk_mtup enabled=%d\n", hdr, icsk->icsk_mtup->enabled);
+    printf("%s: sk=%p sport=%d dport=%d\n", hdr, sk, inet_sport(sk), inet_dport(sk));
+    printf("%s: icsk_mtup.enabled=%d\n", hdr, icsk->icsk_mtup->enabled);
     printf("%s: icsk_mtup.probe_size=%d\n", hdr, icsk->icsk_mtup->probe_size);
-    printf("%s: icsk_ca_state=%d\n", hdr, icsk->icsk_ca_state);
+    //printf("%s: icsk_ca_state=%d\n", hdr, icsk->icsk_ca_state);
     printf("%s: snd_cwnd=%d\n", hdr, tp->snd_cwnd);
-    printf("%s: tp->rx_opt.num_sacks=%d\n", hdr, tp->rx_opt->num_sacks);
-    printf("%s: tp->rx_opt.dsack=%d\n", hdr, tp->rx_opt->dsack);
+    //printf("%s: tp->rx_opt.num_sacks=%d\n", hdr, tp->rx_opt->num_sacks);
+    //printf("%s: tp->rx_opt.dsack=%d\n", hdr, tp->rx_opt->dsack);
 
+    /*
     printf("%s: snd_una=%d\n", hdr, tp->snd_una);
     printf("%s: snd_nxt=%d\n", hdr, tp->snd_nxt);
     printf("%s: snd_write_seq=%d\n", hdr, tp->write_seq);
     printf("%s: size_sendable write_seq-snd_nxt=%d\n", hdr, tp->write_seq - tp->snd_nxt);
+     */
 
+    printf("%s: icsk_pmtu_cookie=%d\n", hdr, inet_csk(sk)->icsk_pmtu_cookie);
     printf("%s: icsk_mtup search_high=%d search_low=%d\n", hdr,
             icsk->icsk_mtup->search_high,
             icsk->icsk_mtup->search_low);
+    /*
     printf("%s: icsk_mtup.probe_timestamp=%d jiffies=%d delta=%d\n", hdr,
             icsk->icsk_mtup->probe_timestamp, jiffies(),
             icsk->icsk_mtup->probe_timestamp - (jiffies() & 0xFFFFFFFF));
+     */
     printf("%s: mtu_probe.probe_seq_end=%d\n", hdr, tp->mtu_probe->probe_seq_end);
     printf("%s: mss_clamp=%d\n", hdr, tp->rx_opt->mss_clamp);
     printf("%s: mss_cache=%d\n", hdr, tp->mss_cache);
-    printf("%s: net.ipv4.sysctl_tcp_probe_threshold=%d\n", hdr, net->ipv4->sysctl_tcp_probe_threshold);
-    printf("%s: net.ipv4.sysctl_tcp_probe_interval=%d\n", hdr, net->ipv4->sysctl_tcp_probe_interval);
+    //printf("%s: net.ipv4.sysctl_tcp_probe_threshold=%d\n", hdr, sock_net(sk)->ipv4->sysctl_tcp_probe_threshold);
+    //printf("%s: net.ipv4.sysctl_tcp_probe_interval=%d\n", hdr, sock_net(sk)->ipv4->sysctl_tcp_probe_interval);
 }
 
 %( @TRACE_SYNC_MSS == 1 %?
