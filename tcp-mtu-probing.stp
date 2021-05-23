@@ -182,11 +182,13 @@ probe kernel.function("tcp_sync_mss") {
         printf("%s: $pmtu=%d"
                 " old mss_cache=%d"
                 " icsk->icsk_pmtu_cookie=%d"
+                " icsk->icsk_mtup.search_low=%d"
                 " icsk->icsk_mtup.search_high=%d"
                 "\n", ehdr(),
                 $pmtu,
                 tcp_sk(sk)->mss_cache,
                 inet_csk(sk)->icsk_pmtu_cookie,
+                inet_csk(sk)->icsk_mtup->search_low,
                 inet_csk(sk)->icsk_mtup->search_high);
         print_backtrace_fileline();
     }
@@ -197,10 +199,12 @@ probe kernel.function("tcp_sync_mss").return {
     if (interesting_sk(sk)) {
         printf("%s: new mss_cache=%d"
                 " icsk->icsk_pmtu_cookie=%d"
+                " icsk->icsk_mtup.search_low=%d"
                 " icsk->icsk_mtup.search_high=%d"
                 "\n", ehdr(),
                 tcp_sk(sk)->mss_cache,
                 inet_csk(sk)->icsk_pmtu_cookie,
+                inet_csk(sk)->icsk_mtup->search_low,
                 inet_csk(sk)->icsk_mtup->search_high);
         printf("%s: sk=%p\n", ohdr(), sk);
     }
