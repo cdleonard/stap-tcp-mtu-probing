@@ -12,6 +12,9 @@
 // Trace conversion between mtu and mss
 @define TRACE_MTU_MSS_CONV %(0%)
 
+// Trace tcp_mtup_init
+@define TRACE_MTU_PROBE_INIT %(0%)
+
 // Trace tcp_sync_mss
 @define TRACE_SYNC_MSS %(1%)
 
@@ -297,6 +300,26 @@ probe kernel.function("tcp_mss_to_mtu").return {
     if (interesting_sk(sk)) {
         printf("%s: return %d mss=%d delta=%d\n", ohdr(),
                 $return, @entry($mss), $return - @entry($mss));
+    }
+}
+%:%)
+
+%( @TRACE_MTU_PROBE_INIT == 1 %?
+probe kernel.function("tcp_mtup_init")
+{
+    sk = $sk;
+    if (interesting_sk(sk)) {
+        printf("%s: parms: %s\n", ihdr(), $$parms);
+        print_backtrace();
+    }
+}
+
+probe kernel.function("tcp_mtup_init").return
+{
+    sk = @entry($sk);
+    if (interesting_sk(sk)) {
+        dump_tcp_mtu_probe_info(sk);
+        printf("%s: sk=%p\n", ohdr(), sk);
     }
 }
 %:%)
