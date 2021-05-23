@@ -282,7 +282,6 @@ probe kernel.function("tcp_write_xmit") {
             ehdr(), sk, $push_one, size_queued);
 }
 
-// (SKIP) trace mtu_to_mss and mss_to_mtu calculations:
 %( @TRACE_MTU_MSS_CONV == 1 %?
 probe kernel.function("tcp_mtu_to_mss")
 {
