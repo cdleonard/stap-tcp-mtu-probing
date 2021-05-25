@@ -286,17 +286,28 @@ probe kernel.function("tcp_mtu_probe").callee("sk_stream_alloc_skb") {
 %:%)
 
 probe kernel.function("tcp_mtu_probe@net/ipv4/tcp_output.c") {
-    sk = $sk;
+    sk = @defined($sk) ? $sk : 0;
     if (interesting_sk(sk)) {
         printf("%s: parms: %s\n", ehdr(), $$parms);
-        dump_tcp_mtu_probe_info(sk);
     }
 }
 
-probe kernel.statement("tcp_mtu_probe@net/ipv4/tcp_output.c:*") {
-    sk = $sk;
+/*
+// Usually inlined unless explicitly unoptimized
+probe kernel.function("tcp_mtu_probe@net/ipv4/tcp_output.c").return {
+    sk = @entry($sk);
     if (interesting_sk(sk)) {
-        printf("%s: locals: %s\n", ehdrl(), $$locals);
+        printf("%s: return %d\n", ehdr(), $return);
+    }
+}
+ */
+
+probe kernel.statement("tcp_mtu_probe@net/ipv4/tcp_output.c:*") {
+    sk = @defined($sk) ? $sk : 0;
+    if (interesting_sk(sk)) {
+        printf("%s: size_needed=%s locals: %s\n", ehdrl(),
+                @defined($size_needed) ? sprintf("%d", $size_needed) : "?",
+                $$locals);
     }
 }
 
@@ -309,6 +320,7 @@ probe kernel.function("tcp_write_xmit") {
     size_queued = tp->write_seq - tp->snd_nxt;
     printf("%s: sk=%p push_one=%d size_queued=%d\n",
             ehdr(), sk, $push_one, size_queued);
+    dump_tcp_mtu_probe_info(sk);
 }
 
 %( @TRACE_MTU_MSS_CONV == 1 %?
