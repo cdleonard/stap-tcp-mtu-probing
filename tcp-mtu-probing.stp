@@ -168,7 +168,7 @@ probe kernel.function("tcp_sendmsg_locked") {
     if (interesting_sk($sk)) {
         tp = tcp_sk($sk);
         size_queued = tp->write_seq - tp->snd_nxt;
-        printf("%s: sk=%p size=%d size_queue=%d BEGIN\n", ehdr(), $sk, $size, size_queued);
+        printf("%s: sk=%p size=%d size_queued=%d BEGIN\n", ehdr(), $sk, $size, size_queued);
     }
 }
 
@@ -182,30 +182,36 @@ function dump_tcp_mtu_probe_info(sk)
     printf("%s: sk=%p sport=%d dport=%d\n", hdr, sk, inet_sport(sk), inet_dport(sk));
     printf("%s: icsk_mtup.enabled=%d\n", hdr, icsk->icsk_mtup->enabled);
     printf("%s: icsk_mtup.probe_size=%d\n", hdr, icsk->icsk_mtup->probe_size);
-    //printf("%s: icsk_ca_state=%d\n", hdr, icsk->icsk_ca_state);
+    printf("%s: icsk_ca_state=%d\n", hdr, icsk->icsk_ca_state);
     printf("%s: snd_cwnd=%d\n", hdr, tp->snd_cwnd);
     //printf("%s: tp->rx_opt.num_sacks=%d\n", hdr, tp->rx_opt->num_sacks);
     //printf("%s: tp->rx_opt.dsack=%d\n", hdr, tp->rx_opt->dsack);
 
-    /*
-    printf("%s: snd_una=%d\n", hdr, tp->snd_una);
-    printf("%s: snd_nxt=%d\n", hdr, tp->snd_nxt);
-    printf("%s: snd_write_seq=%d\n", hdr, tp->write_seq);
-    printf("%s: size_sendable write_seq-snd_nxt=%d\n", hdr, tp->write_seq - tp->snd_nxt);
-     */
+    //printf("%s: snd_una=%d\n", hdr, tp->snd_una);
+    //printf("%s: snd_nxt=%d\n", hdr, tp->snd_nxt);
+    //printf("%s: snd_write_seq=%d\n", hdr, tp->write_seq);
+    printf("%s: snd_wnd=%d\n", hdr, tp->snd_wnd);
+    printf("%s: snd_nxt-snd_una=%d\n", hdr, tp->snd_nxt - tp->snd_una);
+    printf("%s: size_queued write_seq-snd_nxt=%d\n", hdr, tp->write_seq - tp->snd_nxt);
 
-    printf("%s: icsk_pmtu_cookie=%d\n", hdr, inet_csk(sk)->icsk_pmtu_cookie);
+    printf("%s: packets_out=%d\n", hdr, tp->packets_out);
+    printf("%s: sacked_out=%d\n", hdr, tp->sacked_out);
+    printf("%s: lost_out=%d\n", hdr, tp->lost_out);
+    printf("%s: retrans_out=%d\n", hdr, tp->retrans_out);
+    printf("%s: tcp_packets_in_flight()=%d\n", hdr,
+            tp->packets_out - (tp->sacked_out + tp->lost_out) + tp->retrans_out);
+
+    printf("%s: mss_cache=%d\n", hdr, tp->mss_cache);
     printf("%s: icsk_mtup search_high=%d search_low=%d\n", hdr,
             icsk->icsk_mtup->search_high,
             icsk->icsk_mtup->search_low);
-    /*
-    printf("%s: icsk_mtup.probe_timestamp=%d jiffies=%d delta=%d\n", hdr,
-            icsk->icsk_mtup->probe_timestamp, jiffies(),
-            icsk->icsk_mtup->probe_timestamp - (jiffies() & 0xFFFFFFFF));
-     */
-    printf("%s: mtu_probe.probe_seq_end=%d\n", hdr, tp->mtu_probe->probe_seq_end);
+    printf("%s: icsk_pmtu_cookie=%d\n", hdr, inet_csk(sk)->icsk_pmtu_cookie);
     printf("%s: mss_clamp=%d\n", hdr, tp->rx_opt->mss_clamp);
-    printf("%s: mss_cache=%d\n", hdr, tp->mss_cache);
+
+    printf("%s: icsk_mtup.probe_timestamp=%#x jiffies=%#x delta=%#d\n", hdr,
+            icsk->icsk_mtup->probe_timestamp, tcp_jiffies32(),
+            icsk->icsk_mtup->probe_timestamp - tcp_jiffies32());
+    printf("%s: mtu_probe.probe_seq_end=%d\n", hdr, tp->mtu_probe->probe_seq_end);
     //printf("%s: net.ipv4.sysctl_tcp_probe_threshold=%d\n", hdr, sock_net(sk)->ipv4->sysctl_tcp_probe_threshold);
     //printf("%s: net.ipv4.sysctl_tcp_probe_interval=%d\n", hdr, sock_net(sk)->ipv4->sysctl_tcp_probe_interval);
 }
