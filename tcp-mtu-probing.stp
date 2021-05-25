@@ -139,7 +139,7 @@ probe
 {
     sk = $sk;
     if (interesting_sk(sk)) {
-        printf("%s: sk=%p caller: %s parms: %s\n", ihdr(), sk, caller(), $$parms);
+        printf("%s: caller: %s parms: %s\n", ihdr(), caller(), $$parms);
     }
 }
 
