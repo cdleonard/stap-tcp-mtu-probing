@@ -54,6 +54,10 @@ function inet_sport(sk) {
     return ntohs(inet_sk(sk)->inet_sport);
 }
 
+/*
+ * Equivalent of the following macro from inet_sock.h:
+ # define inet_dport		sk.__sk_common.skc_dport
+ */
 function inet_dport(sk) {
     return ntohs(sk_common(sk)->skc_dport);
 }
