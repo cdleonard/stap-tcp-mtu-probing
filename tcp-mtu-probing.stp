@@ -24,6 +24,9 @@
 // Trace tcp_cwnd_restart
 @define TRACE_CWND_RESTART %(1%)
 
+// Trace time difference between sendmsg calls
+@define TRACE_SENDMSG_INTERVAL %(1%)
+
 probe begin {
     println("hello tcp-mtu-probing.stp");
 }
@@ -386,6 +389,19 @@ probe kernel.function("tcp_cwnd_restart").return
         tp = tcp_sk(sk);
         printf("%s: new snd_cwnd=%d snd_cwnd_stamp=0x%x snd_ssthresh=%d\n",
                 ohdr(), tp->snd_cwnd, tp->snd_cwnd_stamp, tp->snd_ssthresh);
+    }
+}
+%:%)
+
+%( @TRACE_SENDMSG_INTERVAL == 1 %?
+global last_usec_sendmsg = 0;
+
+probe kernel.function("tcp_sendmsg_locked") {
+    if (interesting_sk($sk)) {
+        curr_usec = gettimeofday_us();
+        if (last_usec_sendmsg)
+            printf("%s: delta=%+dus\n", ehdr(), curr_usec - last_usec_sendmsg);
+        last_usec_sendmsg = curr_usec;
     }
 }
 %:%)
