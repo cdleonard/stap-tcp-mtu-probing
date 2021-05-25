@@ -6,8 +6,11 @@
 @define ONLY_TRACE_MTUP_ENABLED %(0%)
 
 // Only trace sockets with the following port (either sport or dport):
-@define ONLY_TRACE_TCP_PORT %(5001%)
-//@define ONLY_TRACE_TCP_PORT %(0%)
+//@define ONLY_TRACE_TCP_PORT %(5001%)
+@define ONLY_TRACE_TCP_PORT %(0%)
+
+// Only trace sockets with the following dport:
+@define ONLY_TRACE_TCP_DPORT %(5001%)
 
 // Trace conversion between mtu and mss
 @define TRACE_MTU_MSS_CONV %(0%)
@@ -73,20 +76,27 @@ function tcp_sk(sk) {
 function interesting_sk(sk) {
     if (!sk)
         return 0;
-    /* AF_INET SOCK_STREAM */
+
+    /* Only even trace AF_INET SOCK_STREAM TCPv4 */
     if (sk_family(sk) != 2 || sk_type(sk) != 1)
         return 0;
+
     %( @ONLY_TRACE_MTUP_ENABLED == 1 %?
         if (!inet_csk(sk)->icsk_mtup->enabled)
             return 0;
     %:%)
+
     %( @ONLY_TRACE_TCP_PORT != 0 %?
-        sport = inet_sport(sk);
-        dport = inet_dport(sk);
-        return(sport == @ONLY_TRACE_TCP_PORT || dport == @ONLY_TRACE_TCP_PORT);
-    %:
-        return 1;
-    %)
+        if (inet_sport(sk) != @ONLY_TRACE_TCP_PORT || inet_dport(sk) != @ONLY_TRACE_TCP_PORT)
+            return 0;
+    %:%)
+
+    %( @ONLY_TRACE_TCP_DPORT != 0 %?
+        if (inet_dport(sk) != @ONLY_TRACE_TCP_DPORT)
+            return 0;
+    %:%)
+
+    return 1;
 }
 
 function ihdr:string() {
