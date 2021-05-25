@@ -21,6 +21,9 @@
 // Trace tcp_sync_mss
 @define TRACE_SYNC_MSS %(1%)
 
+// Trace tcp_cwnd_restart
+@define TRACE_CWND_RESTART %(1%)
+
 probe begin {
     println("hello tcp-mtu-probing.stp");
 }
@@ -71,6 +74,10 @@ function inet_csk(sk) {
 
 function tcp_sk(sk) {
     return &@cast(sk, "tcp_sock", "kernel<linux/tcp.h>");
+}
+
+function tcp_jiffies32() {
+    return jiffies() & 0xFFFFFFFF;
 }
 
 function interesting_sk(sk) {
@@ -346,6 +353,39 @@ probe kernel.function("tcp_mtup_init").return
     if (interesting_sk(sk)) {
         dump_tcp_mtu_probe_info(sk);
         printf("%s: sk=%p\n", ohdr(), sk);
+    }
+}
+%:%)
+
+%( @TRACE_CWND_RESTART == 1 %?
+probe kernel.function("tcp_cwnd_restart")
+{
+    sk = $sk;
+    if (interesting_sk($sk)) {
+        tp = tcp_sk($sk);
+        printf("%s: parms: %s\n", ihdr(), $$parms);
+        printf("%s: tcp_jiffies32=0x%x lsndtime=0x%x delta=%d > icsk_rto=%d"
+                " srtt_us=%dus rttvar_us=%dus\n",
+                ehdr(),
+                tcp_jiffies32(), tp->lsndtime,
+                tcp_jiffies32() - tp->lsndtime,
+                inet_csk(sk)->icsk_rto,
+                tp->srtt_us, tp->rttvar_us);
+        printf("%s: old snd_cwnd=%d snd_ssthresh=%d snd_cwnd_stamp=0x%d delta=%+dhz\n",
+                ehdr(), tp->snd_cwnd,
+                tp->snd_ssthresh,
+                tp->snd_cwnd_stamp,
+                tcp_jiffies32() - tp->snd_cwnd_stamp);
+    }
+}
+
+probe kernel.function("tcp_cwnd_restart").return
+{
+    sk = @entry($sk);
+    if (interesting_sk(sk)) {
+        tp = tcp_sk(sk);
+        printf("%s: new snd_cwnd=%d snd_cwnd_stamp=0x%x snd_ssthresh=%d\n",
+                ohdr(), tp->snd_cwnd, tp->snd_cwnd_stamp, tp->snd_ssthresh);
     }
 }
 %:%)
