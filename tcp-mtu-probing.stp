@@ -21,6 +21,9 @@
 // Trace tcp_sync_mss
 @define TRACE_SYNC_MSS %(1%)
 
+// Trace in tcp_mtup_probe_failed, tcp_mtup_probe_success
+@define TRACE_PROBE_SUCCESS_FAILURE %(0%)
+
 // Trace tcp_cwnd_restart
 @define TRACE_CWND_RESTART %(1%)
 
@@ -261,24 +264,26 @@ probe kernel.function("tcp_send_mss").return {
 probe kernel.function("tcp_mtu_probe").callee("sk_stream_alloc_skb") {
     sk = $sk;
     if (interesting_sk(sk)) {
-        printf("%s: PROBE SEND call sk_stream_alloc_skb vars: %s\n", ehdr(), $$vars);
+        printf("%s: PROBE SENDING call sk_stream_alloc_skb vars: %s\n", ehdr(), $$vars);
         print_backtrace();
     }
 }
 
-probe kernel.function("tcp_mtup_probe_failed") {
-    if (interesting_sk($sk)) {
-        printf("%s: PROBE FAIL vars: %s\n", ehdr(), $$vars);
-        print_backtrace();
+%( @TRACE_PROBE_SUCCESS_FAILURE == 1 %?
+    probe kernel.function("tcp_mtup_probe_failed") {
+        if (interesting_sk($sk)) {
+            printf("%s: PROBE FAILURE vars: %s\n", ehdr(), $$vars);
+            print_backtrace();
+        }
     }
-}
 
-probe kernel.function("tcp_mtup_probe_success") {
-    if (interesting_sk($sk)) {
-        printf("%s: PROBE PASS vars: %s\n", ehdr(), $$vars);
-        print_backtrace();
+    probe kernel.function("tcp_mtup_probe_success") {
+        if (interesting_sk($sk)) {
+            printf("%s: PROBE SUCCESS vars: %s\n", ehdr(), $$vars);
+            print_backtrace();
+        }
     }
-}
+%:%)
 
 probe kernel.function("tcp_mtu_probe@net/ipv4/tcp_output.c") {
     sk = $sk;
