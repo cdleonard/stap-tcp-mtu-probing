@@ -27,6 +27,9 @@
 // Trace tcp_cwnd_restart
 @define TRACE_CWND_RESTART %(1%)
 
+// Trace snd_cwnd adjustments (assumes cubic)
+@define TRACE_CWND %(0%)
+
 // Trace time difference between sendmsg calls
 @define TRACE_SENDMSG_INTERVAL %(1%)
 
@@ -412,6 +415,61 @@ probe kernel.function("tcp_cwnd_restart").return
         tp = tcp_sk(sk);
         printf("%s: new snd_cwnd=%d snd_cwnd_stamp=0x%x snd_ssthresh=%d\n",
                 ohdr(), tp->snd_cwnd, tp->snd_cwnd_stamp, tp->snd_ssthresh);
+    }
+}
+%:%)
+
+%( @TRACE_CWND == 1 %?
+probe kernel.function("cubictcp_cong_avoid")
+{
+    tp = $tp;
+    if (interesting_sk(tp)) {
+        printf("%s: parms: %s\n", ihdr(), $$parms);
+        printf("%s: OLD snd_cwnd=%d\n", ehdr(), tp->snd_cwnd);
+        printf("%s:"
+                " snd_ssthresh=%d"
+                " snd_cwnd=%d"
+                " max_packets_out=%d"
+                " ->is_cwnd_limited=%d"
+                "\n", ehdr(),
+                tp->snd_ssthresh,
+                tp->snd_cwnd,
+                tp->max_packets_out,
+                tp->is_cwnd_limited)
+    }
+}
+
+probe kernel.function("cubictcp_cong_avoid").return
+{
+    tp = tcp_sk(@entry($tp));
+    if (interesting_sk(tp)) {
+        printf("%s: NEW snd_cwnd=%d\n", ohdr(), tp->snd_cwnd);
+    }
+}
+
+probe kernel.function("tcp_slow_start")
+{
+    tp = $tp;
+    if (interesting_sk(tp)) {
+        printf("%s: parms: %s\n", ehdr(), $$parms);
+        printf("%s: snd_ssthresh=%d\n", ehdr(), tp->snd_ssthresh)
+        printf("%s: old snd_cwnd=%d\n", ehdr(), tp->snd_cwnd)
+    }
+}
+
+probe kernel.function("tcp_cong_avoid_ai")
+{
+    tp = $tp;
+    if (interesting_sk(tp)) {
+        printf("%s: parms: %s\n", ehdr(), $$parms);
+        printf("%s:"
+                " snd_cwnd=%d"
+                " snd_cwnd_cnt=%d"
+                " snd_cwnd_clamp=%d"
+                "\n", ehdr(),
+                tp->snd_cwnd,
+                tp->snd_cwnd_cnt,
+                tp->snd_cwnd_clamp);
     }
 }
 %:%)
