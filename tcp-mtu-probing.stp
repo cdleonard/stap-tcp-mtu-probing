@@ -235,7 +235,7 @@ probe kernel.function("tcp_sync_mss") {
                 inet_csk(sk)->icsk_pmtu_cookie,
                 inet_csk(sk)->icsk_mtup->search_low,
                 inet_csk(sk)->icsk_mtup->search_high);
-        print_backtrace_fileline();
+        print_backtrace();
     }
 }
 
